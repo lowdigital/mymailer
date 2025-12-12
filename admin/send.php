@@ -654,6 +654,10 @@ $remaining_count = $total_active - $sent_count;
                     ⚡ Отправка по <?= $users_per_step ?> писем каждые <?= $timeout_seconds ?> сек
                 </div>
             <?php endif; ?>
+
+            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 13px;">
+                Powered by <a href="https://github.com/lowdigital/mymailer" target="_blank" style="color: var(--accent-primary); text-decoration: none;">MyMailer</a>
+            </div>
         </div>
     </div>
 

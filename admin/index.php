@@ -805,6 +805,10 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
                 <?php endif; ?>
             </section>
         </main>
+
+        <footer style="text-align: center; padding: 24px 40px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 13px;">
+            Powered by <a href="https://github.com/lowdigital/mymailer" target="_blank" style="color: var(--accent-primary); text-decoration: none;">MyMailer</a>
+        </footer>
         
         <!-- Create Campaign Modal -->
         <div class="modal-overlay" id="createModal">
