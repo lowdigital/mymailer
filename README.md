@@ -7,18 +7,18 @@
 
 ## ✨ Features
 
-- 🎨 **Modern Dark UI** — Beautiful responsive interface with gradient accents
-- 📊 **Campaign Management** — Create, edit, delete email campaigns
-- 📝 **HTML Editor** — Visual template editor with live preview and syntax highlighting
-- 📎 **Attachments** — Attach files to your emails with drag & drop
-- 🚀 **Browser-based Sending** — Send emails directly from browser with visual progress
-- 👁️ **Open Tracking** — Track email opens with invisible pixel
-- 🔗 **Click Tracking** — Track all link clicks with detailed statistics
-- 📈 **Analytics Dashboard** — View open rates, click rates, popular links
-- 🚫 **Unsubscribe System** — Automatic unsubscribe handling with global blocklist
-- ⚙️ **Flexible Settings** — SMTP configuration, sending speed, admin password
-- 📁 **No Database** — All data stored in files (JSON, TXT)
-- 🔒 **Secure** — Password-protected admin panel
+- **Modern Dark UI** — Beautiful responsive interface with gradient accents
+- **Campaign Management** — Create, edit, delete email campaigns
+- **HTML Editor** — Visual template editor with live preview and syntax highlighting
+- **Attachments** — Attach files to your emails with drag & drop
+- **Browser-based Sending** — Send emails directly from browser with visual progress
+- **Open Tracking** — Track email opens with invisible pixel
+- **Click Tracking** — Track all link clicks with detailed statistics
+- **Analytics Dashboard** — View open rates, click rates, popular links
+- **Unsubscribe System** — Automatic unsubscribe handling with global blocklist
+- **Flexible Settings** — SMTP configuration, sending speed, admin password
+- **No Database** — All data stored in files (JSON, TXT)
+- **Secure** — Password-protected admin panel
 
 ## 📁 Project Structure
 
