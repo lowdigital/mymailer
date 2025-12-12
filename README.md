@@ -211,6 +211,24 @@ System automatically adds headers:
 
 MIT License — free for personal and commercial use.
 
+### Third-Party Licenses
+
+This project includes the following third-party libraries:
+
+| Library | Version | License | Link |
+|---------|---------|---------|------|
+| PHPMailer | 6.x | LGPL-2.1 | [GitHub](https://github.com/PHPMailer/PHPMailer) |
+
+#### PHPMailer
+
+PHPMailer is licensed under the **GNU Lesser General Public License v2.1 (LGPL-2.1)**.
+
+- **Authors**: Marcus Bointon, Jim Jagielski, Andy Prevost, Brent R. Matzelle
+- **Copyright**: 2012-2017 Marcus Bointon, 2010-2012 Jim Jagielski, 2004-2009 Andy Prevost
+- **License URL**: http://www.gnu.org/copyleft/lesser.html
+
+> ⚠️ **Note**: LGPL allows commercial use without requiring your code to be open source, as long as PHPMailer is used as a library and not modified. If you modify PHPMailer itself, those modifications must be released under LGPL.
+
 ## Contacts
 
 Follow updates on the Telegram channel: [low digital](https://t.me/low_digital).
