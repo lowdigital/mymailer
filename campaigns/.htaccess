@@ -1,0 +1,4 @@
+# Deny all access to campaigns directory
+Order Allow,Deny
+Deny from all
+

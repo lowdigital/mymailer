@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отписка от рассылки - MyMailer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-card: #16161f;
+            --bg-tertiary: #1a1a26;
+            --accent-primary: #6366f1;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255, 255, 255, 0.06);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius-md: 12px;
+            --radius-xl: 24px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+                radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 48px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .icon { font-size: 72px; margin-bottom: 24px; line-height: 1; }
+        h1 { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+        .subtitle { color: var(--text-secondary); font-size: 16px; margin-bottom: 32px; }
+
+        .email-display {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 24px;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 32px;
+            font-size: 14px;
+            color: #fcd34d;
+            text-align: left;
+        }
+
+        .warning strong { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+        .success-message, .resubscribe-section {
+            display: none;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 24px;
+            color: #86efac;
+        }
+
+        .success-message strong {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .resubscribe-section {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #93c5fd;
+        }
+
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 24px;
+            color: #fca5a5;
+        }
+
+        .loading { display: none; margin: 24px 0; }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 24px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover { border-color: var(--accent-primary); }
+
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #16a34a; }
+
+        .footer {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 32px 24px; }
+            .btn-group { flex-direction: column; }
+            .btn { width: 100%; }
+            h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">📧</div>
+            <span class="logo-text">MyMailer</span>
+        </div>
+        
+        <div class="icon" id="mainIcon">✉️</div>
+        <h1 id="mainTitle">Отписка от рассылки</h1>
+        <p class="subtitle" id="mainSubtitle">Вы действительно хотите отписаться?</p>
+
+        <div class="email-display" id="emailDisplay">Загрузка...</div>
+
+        <div class="warning" id="warningBox">
+            <strong>⚠️ Внимание!</strong>
+            После отписки вы больше не будете получать наши письма и уведомления.
+        </div>
+
+        <div class="success-message" id="successMessage">
+            <strong>✅ Успешно!</strong>
+            Вы отписались от рассылки. Больше вы не будете получать письма на указанный email.
+        </div>
+
+        <div class="resubscribe-section" id="resubscribeSection">
+            <p style="margin-bottom: 12px;">Передумали? Вы можете подписаться снова.</p>
+            <button class="btn btn-success" onclick="resubscribe()">📬 Подписаться снова</button>
+        </div>
+
+        <div class="error-message" id="errorMessage">Произошла ошибка. Попробуйте ещё раз.</div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="color: var(--text-secondary);">Обработка запроса...</p>
+        </div>
+
+        <div class="btn-group" id="buttons">
+            <button class="btn btn-primary" onclick="unsubscribe()">Да, отписаться</button>
+            <button class="btn btn-secondary" onclick="goBack()">Нет, остаться</button>
+        </div>
+
+        <div class="footer">Powered by MyMailer</div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        const emailDisplay = document.getElementById('emailDisplay');
+
+        if (email) {
+            emailDisplay.textContent = email;
+        } else {
+            emailDisplay.textContent = 'Email не указан';
+            emailDisplay.style.color = '#fca5a5';
+        }
+
+        function unsubscribe() {
+            if (!email) {
+                alert('Email не указан в URL');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('buttons').style.display = 'none';
+            document.getElementById('warningBox').style.display = 'none';
+
+            fetch('unsubscribe.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'email=' + encodeURIComponent(email)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+
+                if (data.success) {
+                    document.getElementById('mainIcon').textContent = '✅';
+                    document.getElementById('mainTitle').textContent = 'Вы отписались';
+                    document.getElementById('mainSubtitle').style.display = 'none';
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('resubscribeSection').style.display = 'block';
+                } else {
+                    document.getElementById('errorMessage').textContent = data.error || 'Произошла ошибка';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    document.getElementById('buttons').style.display = 'flex';
+                    document.getElementById('warningBox').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('errorMessage').textContent = 'Ошибка сети: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('buttons').style.display = 'flex';
+                document.getElementById('warningBox').style.display = 'block';
+            });
+        }
+
+        function resubscribe() {
+            if (!email) return;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resubscribeSection').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+
+            fetch('unsubscribe.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'email=' + encodeURIComponent(email) + '&action=resubscribe'
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+
+                if (data.success) {
+                    document.getElementById('mainIcon').textContent = '📬';
+                    document.getElementById('mainTitle').textContent = 'Вы снова подписаны!';
+                    document.getElementById('successMessage').innerHTML = '<strong>✅ Успешно!</strong> Вы снова будете получать наши письма.';
+                    document.getElementById('successMessage').style.display = 'block';
+                } else {
+                    document.getElementById('errorMessage').textContent = data.error || 'Произошла ошибка';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    document.getElementById('resubscribeSection').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('errorMessage').textContent = 'Ошибка сети: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('resubscribeSection').style.display = 'block';
+            });
+        }
+
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.close();
+            }
+        }
+    </script>
+</body>
+</html>
