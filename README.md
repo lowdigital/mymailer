@@ -211,10 +211,6 @@ System automatically adds headers:
 
 MIT License — free for personal and commercial use.
 
-## 🤝 Contributing
+## Contacts
 
-Pull requests are welcome! For major changes, please open an issue first to discuss.
-
----
-
-**Made with ❤️ by MyMailer Team**
+Follow updates on the Telegram channel: [low digital](https://t.me/low_digital).
