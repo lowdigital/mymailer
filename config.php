@@ -126,9 +126,32 @@ function getCampaign($uuid) {
     
     // Load recipients list
     $list_file = $dir . '/list.txt';
-    $options['recipients'] = file_exists($list_file) 
-        ? array_filter(array_map('trim', explode("\n", file_get_contents($list_file))))
-        : [];
+    $recipients_raw = file_exists($list_file) ? file_get_contents($list_file) : '';
+    $options['recipients_raw'] = $recipients_raw;
+    
+    $lines = array_filter(array_map('trim', explode("\n", $recipients_raw)));
+    $recipients = [];
+    
+    if (!empty($lines)) {
+        $first_line = $lines[0];
+        // Проверяем, является ли первая строка заголовком (содержит email и запятые)
+        if (strpos($first_line, 'email') !== false && strpos($first_line, ',') !== false) {
+            $headers = str_getcsv($lines[0]);
+            for ($i = 1; $i < count($lines); $i++) {
+                $data = str_getcsv($lines[$i]);
+                if (count($data) >= count($headers)) {
+                    $row = array_combine($headers, array_slice($data, 0, count($headers)));
+                    $recipients[] = $row;
+                }
+            }
+            $options['is_advanced'] = true;
+        } else {
+            $recipients = $lines;
+            $options['is_advanced'] = false;
+        }
+    }
+    
+    $options['recipients'] = $recipients;
     
     // Load template
     $template_file = $dir . '/template.html';
