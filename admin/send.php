@@ -149,15 +149,35 @@ if ($is_running) {
     
     for ($i = $start_index; $i < $end_index; $i++) {
         if (isset($active_recipients[$i])) {
-            $email = $active_recipients[$i];
+            $recipient_data = $active_recipients[$i];
+            
+            // Определяем email и данные для замены
+            if (is_array($recipient_data)) {
+                $email = $recipient_data['email'] ?? '';
+                $vars = $recipient_data;
+            } else {
+                $email = $recipient_data;
+                $vars = ['email' => $email];
+            }
+            
+            if (empty($email)) continue;
+            
             $current_email = $email;
             
             // Подготавливаем персонализированное письмо
+            $personalized_body = $template;
+            
+            // Заменяем [LINK_UNSUBSCRIBE]
             $personalized_body = str_replace(
                 '[LINK_UNSUBSCRIBE]',
                 $unsubscribe_url . '?email=' . urlencode($email),
-                $template
+                $personalized_body
             );
+            
+            // Заменяем динамические переменные {key}
+            foreach ($vars as $key => $value) {
+                $personalized_body = str_replace('{' . $key . '}', $value, $personalized_body);
+            }
             
             // Добавляем отслеживание открытий и кликов
             $personalized_body = processTemplateForTracking($personalized_body, $uuid, $email);

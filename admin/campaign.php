@@ -713,7 +713,7 @@ $unsubscribe_url = getUnsubscribeUrl();
             <div class="header-logo">
                 <div class="header-logo-icon">📧</div>
                 <h1>MyMailer</h1>
-                <span class="version">v2.0</span>
+                <span class="version">v2.1</span>
             </div>
             <nav class="header-nav">
                 <a href="index.php">Кампании</a>
@@ -747,9 +747,9 @@ $unsubscribe_url = getUnsubscribeUrl();
                 </div>
                 <div class="page-actions">
                     <?php if ($campaign['status'] === 'draft' || $campaign['status'] === 'paused'): ?>
-                        <a href="send.php?id=<?= $uuid ?>" class="btn btn-success">🚀 Запустить рассылку</a>
+                        <a href="send.php?id=<?= $uuid ?>" class="btn btn-success" onclick="return saveAndGo(event, this.href)">🚀 Запустить рассылку</a>
                     <?php elseif ($campaign['status'] === 'sending'): ?>
-                        <a href="send.php?id=<?= $uuid ?>" class="btn btn-primary">📊 Продолжить</a>
+                        <a href="send.php?id=<?= $uuid ?>" class="btn btn-primary" onclick="return saveAndGo(event, this.href)">📊 Продолжить</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -847,13 +847,34 @@ $unsubscribe_url = getUnsubscribeUrl();
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">Список получателей</h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-import-input').click()">
+                                📥 Импорт CSV
+                            </button>
+                            <input type="file" id="csv-import-input" style="display: none;" accept=".csv,.txt" onchange="importCSV(this)">
+                            
+                            <label style="font-size: 13px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; text-transform: none;">
+                                <input type="checkbox" id="advanced-toggle" <?= ($campaign['is_advanced'] ?? false) ? 'checked' : '' ?> onchange="toggleAdvancedMode()">
+                                Расширенный режим (CSV)
+                            </label>
+                        </div>
                     </div>
+                    
+                    <div id="simple-hint" class="info-box" style="display: <?= ($campaign['is_advanced'] ?? false) ? 'none' : 'block' ?>;">
+                        Простой список email, каждый с новой строки.
+                    </div>
+                    
+                    <div id="advanced-hint" class="info-box" style="display: <?= ($campaign['is_advanced'] ?? false) ? 'block' : 'none' ?>;">
+                        <strong>CSV формат:</strong> первая строка — заголовки через запятую, включая <code>email</code>.<br>
+                        Пример: <code>email,name,price</code><br>
+                        В письме используйте: <code>{name}</code>, <code>{price}</code>.
+                    </div>
+
                     <form id="recipientsForm">
                         <div class="form-group">
-                            <label>Email адреса (каждый с новой строки)</label>
-                            <textarea name="recipients" class="form-control" style="min-height: 300px;"><?= htmlspecialchars(implode("\n", $campaign['recipients'])) ?></textarea>
+                            <textarea name="recipients" id="recipients-input" class="form-control" style="min-height: 300px;"><?= htmlspecialchars($campaign['recipients_raw'] ?? implode("\n", $campaign['recipients'])) ?></textarea>
                             <p class="form-hint">
-                                Всего: <span id="recipients-count"><?= $recipients_count ?></span> адресов
+                                Всего: <span id="recipients-count"><?= count($campaign['recipients']) ?></span> строк
                             </p>
                         </div>
                         <button type="submit" class="btn btn-primary">💾 Сохранить</button>
@@ -1110,9 +1131,18 @@ $unsubscribe_url = getUnsubscribeUrl();
         function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
         function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
 
+        // Change tracking
+        let changes = { settings: false, recipients: false, template: false };
+
         // Tab switching
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
+                const activeTab = document.querySelector('.tab.active');
+                if (activeTab) {
+                    const prevTabName = activeTab.dataset.tab;
+                    autoSave(prevTabName);
+                }
+
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
@@ -1122,6 +1152,137 @@ $unsubscribe_url = getUnsubscribeUrl();
                 }
             });
         });
+
+        function autoSave(tabName) {
+            if (tabName === 'settings' && changes.settings) return saveSettings(true);
+            else if (tabName === 'recipients' && changes.recipients) return saveRecipients(true);
+            else if (tabName === 'template' && changes.template) return saveTemplate(true);
+            return Promise.resolve();
+        }
+
+        async function saveAndGo(e, url) {
+            e.preventDefault();
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            
+            if (changes[activeTab]) {
+                showLoading();
+                await autoSave(activeTab);
+            }
+            
+            window.location.href = url;
+            return false;
+        }
+
+        // Recipients counter
+        function updateRecipientsCount() {
+            const textarea = document.getElementById('recipients-input');
+            const isAdvanced = document.getElementById('advanced-toggle').checked;
+            const lines = textarea.value.split('\n').filter(line => line.trim() !== '');
+            
+            let count = lines.length;
+            if (isAdvanced && count > 0 && lines[0].includes('email')) {
+                count = Math.max(0, count - 1);
+            }
+            
+            document.getElementById('recipients-count').textContent = count;
+        }
+
+        // Form change listeners
+        document.getElementById('settingsForm').addEventListener('input', () => changes.settings = true);
+        document.getElementById('recipientsForm').addEventListener('input', () => {
+            changes.recipients = true;
+            updateRecipientsCount();
+        });
+
+        // Save functions
+        function saveSettings(silent = false) {
+            const form = document.getElementById('settingsForm');
+            const formData = new FormData(form);
+            formData.append('ajax_action', 'save_settings');
+            
+            return fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        changes.settings = false;
+                        if (!silent) showToast(data.message);
+                    }
+                });
+        }
+
+        function saveRecipients(silent = false) {
+            const form = document.getElementById('recipientsForm');
+            const formData = new FormData(form);
+            formData.append('ajax_action', 'save_recipients');
+            
+            return fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        changes.recipients = false;
+                        document.getElementById('stat-total').textContent = data.count;
+                        document.getElementById('recipients-count').textContent = data.count;
+                        if (!silent) showToast(data.message);
+                    }
+                });
+        }
+
+        function saveTemplate(silent = false) {
+            const formData = new FormData();
+            formData.append('ajax_action', 'save_template');
+            formData.append('template', editor.getValue());
+            
+            return fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        changes.template = false;
+                        if (!silent) showToast(data.message);
+                    }
+                });
+        }
+
+        // Toggle advanced mode hints
+        function toggleAdvancedMode() {
+            const isAdvanced = document.getElementById('advanced-toggle').checked;
+            document.getElementById('simple-hint').style.display = isAdvanced ? 'none' : 'block';
+            document.getElementById('advanced-hint').style.display = isAdvanced ? 'block' : 'none';
+            changes.recipients = true;
+            
+            const textarea = document.getElementById('recipients-input');
+            if (isAdvanced && !textarea.value.startsWith('email')) {
+                textarea.value = 'email,name,price\nmatrix@test.com,Matrix,1000\n' + textarea.value;
+            }
+            updateRecipientsCount();
+        }
+
+        // Import CSV file
+        function importCSV(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const file = input.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const textarea = document.getElementById('recipients-input');
+                textarea.value = content;
+                changes.recipients = true;
+                
+                // Автоматически включаем расширенный режим, если есть запятые
+                if (content.includes(',') && content.includes('email')) {
+                    document.getElementById('advanced-toggle').checked = true;
+                    toggleAdvancedMode();
+                } else {
+                    updateRecipientsCount();
+                }
+                
+                showToast('Файл импортирован');
+                input.value = ''; // Сброс инпута
+            };
+            
+            reader.readAsText(file);
+        }
 
         // CodeMirror editor
         const editor = CodeMirror.fromTextArea(document.getElementById('templateEditor'), {
@@ -1141,57 +1302,22 @@ $unsubscribe_url = getUnsubscribeUrl();
             preview.srcdoc = processedContent;
         }
 
-        editor.on('change', updatePreview);
+        editor.on('change', () => {
+            changes.template = true;
+            updatePreview();
+        });
+        
         updatePreview(); // Initial preview
 
-        // Save template
-        function saveTemplate() {
-            const formData = new FormData();
-            formData.append('ajax_action', 'save_template');
-            formData.append('template', editor.getValue());
-            
-            fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) showToast(data.message);
-                    else showToast(data.error, 'error');
-                })
-                .catch(() => showToast('Ошибка сети', 'error'));
-        }
-
-        // Settings form
+        // Forms event listeners for explicit save
         document.getElementById('settingsForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            formData.append('ajax_action', 'save_settings');
-            
-            fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) showToast(data.message);
-                    else showToast(data.error, 'error');
-                })
-                .catch(() => showToast('Ошибка сети', 'error'));
+            saveSettings();
         });
 
-        // Recipients form
         document.getElementById('recipientsForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            formData.append('ajax_action', 'save_recipients');
-            
-            fetch('campaign.php?id=' + uuid, { method: 'POST', body: formData })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast(data.message);
-                        document.getElementById('stat-total').textContent = data.count;
-                        document.getElementById('recipients-count').textContent = data.count;
-                    } else {
-                        showToast(data.error, 'error');
-                    }
-                })
-                .catch(() => showToast('Ошибка сети', 'error'));
+            saveRecipients();
         });
 
         // Reset counter

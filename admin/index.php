@@ -50,7 +50,24 @@ if (isset($_POST['delete_campaign']) && isAuthenticated()) {
     }
 }
 
-$campaigns = getCampaigns();
+// Архивация/Разархивация кампании
+if (isset($_POST['toggle_archive']) && isAuthenticated()) {
+    $uuid = $_POST['campaign_uuid'] ?? '';
+    $status = $_POST['new_status'] ?? 'archived';
+    if (!empty($uuid)) {
+        $campaign_data = getCampaign($uuid);
+        if ($campaign_data) {
+            $campaign_data['status'] = $status;
+            saveCampaign($uuid, $campaign_data);
+            header('Location: index.php?archived=1');
+            exit;
+        }
+    }
+}
+
+$all_campaigns = getCampaigns();
+$campaigns = array_filter($all_campaigns, fn($c) => ($c['status'] ?? '') !== 'archived');
+$archived_campaigns = array_filter($all_campaigns, fn($c) => ($c['status'] ?? '') === 'archived');
 $unsubscribed_count = count(getGlobalUnsubscribed());
 ?>
 <!DOCTYPE html>
@@ -390,6 +407,44 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
             color: white;
         }
 
+        /* Tabs */
+        .index-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            background: var(--bg-card);
+            padding: 6px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            width: fit-content;
+        }
+
+        .index-tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .index-tab.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
         /* Main Content */
         .main {
             padding: 40px;
@@ -710,7 +765,7 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
             <div class="header-logo">
                 <div class="header-logo-icon">📧</div>
                 <h1>MyMailer</h1>
-                <span class="version">v2.0</span>
+                <span class="version">v2.1</span>
             </div>
             <nav class="header-nav">
                 <a href="index.php" class="active">Кампании</a>
@@ -726,17 +781,23 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
                     Кампания успешно удалена
                 </div>
             <?php endif; ?>
+            <?php if (isset($_GET['archived'])): ?>
+                <div class="alert alert-info">
+                    <span>📦</span>
+                    Статус кампании обновлен
+                </div>
+            <?php endif; ?>
             
             <!-- Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">📊</div>
-                    <div class="stat-value"><?= count($campaigns) ?></div>
+                    <div class="stat-value"><?= count($all_campaigns) ?></div>
                     <div class="stat-label">Всего кампаний</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-value"><?= count(array_filter($campaigns, fn($c) => ($c['status'] ?? '') === 'completed')) ?></div>
+                    <div class="stat-value"><?= count(array_filter($all_campaigns, fn($c) => ($c['status'] ?? '') === 'completed')) ?></div>
                     <div class="stat-label">Завершено</div>
                 </div>
                 <div class="stat-card">
@@ -745,65 +806,126 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
                     <div class="stat-label">Отписавшихся</div>
                 </div>
             </div>
+
+            <!-- Tabs -->
+            <div class="index-tabs">
+                <button class="index-tab active" onclick="switchTab('active-pane', this)">Активные (<?= count($campaigns) ?>)</button>
+                <button class="index-tab" onclick="switchTab('archived-pane', this)">Архив (<?= count($archived_campaigns) ?>)</button>
+            </div>
             
-            <!-- Campaigns Section -->
-            <section class="section">
-                <div class="section-header">
-                    <h2 class="section-title">Рассылки</h2>
-                    <button class="btn btn-primary" onclick="openModal('createModal')">
-                        <span>+</span> Новая рассылка
-                    </button>
-                </div>
-                
-                <?php if (empty($campaigns)): ?>
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📭</div>
-                        <h3>Нет рассылок</h3>
-                        <p>Создайте свою первую email кампанию</p>
+            <!-- Active Campaigns -->
+            <div id="active-pane" class="tab-pane active">
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Активные рассылки</h2>
                         <button class="btn btn-primary" onclick="openModal('createModal')">
-                            Создать рассылку
+                            <span>+</span> Новая рассылка
                         </button>
                     </div>
-                <?php else: ?>
-                    <div class="campaigns-grid">
-                        <?php foreach ($campaigns as $campaign): ?>
-                            <div class="campaign-card">
-                                <div class="campaign-info">
-                                    <h3><?= htmlspecialchars($campaign['name'] ?? 'Без названия') ?></h3>
-                                    <div class="campaign-meta">
-                                        <span class="campaign-status status-<?= $campaign['status'] ?? 'draft' ?>">
-                                            <?php
-                                            $statuses = [
-                                                'draft' => '📝 Черновик',
-                                                'sending' => '🚀 Отправка',
-                                                'completed' => '✅ Завершена',
-                                                'paused' => '⏸️ Пауза'
-                                            ];
-                                            echo $statuses[$campaign['status'] ?? 'draft'] ?? '📝 Черновик';
-                                            ?>
-                                        </span>
-                                        <span>📧 <?= htmlspecialchars($campaign['subject'] ?? 'Без темы') ?></span>
-                                        <span>📅 <?= date('d.m.Y H:i', strtotime($campaign['created_at'] ?? 'now')) ?></span>
+                    
+                    <?php if (empty($campaigns)): ?>
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <h3>Нет активных рассылок</h3>
+                            <p>Создайте новую кампанию или проверьте архив</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="campaigns-grid">
+                            <?php foreach ($campaigns as $campaign): ?>
+                                <div class="campaign-card">
+                                    <div class="campaign-info">
+                                        <h3><?= htmlspecialchars($campaign['name'] ?? 'Без названия') ?></h3>
+                                        <div class="campaign-meta">
+                                            <span class="campaign-status status-<?= $campaign['status'] ?? 'draft' ?>">
+                                                <?php
+                                                $statuses = [
+                                                    'draft' => '📝 Черновик',
+                                                    'sending' => '🚀 Отправка',
+                                                    'completed' => '✅ Завершена',
+                                                    'paused' => '⏸️ Пауза'
+                                                ];
+                                                echo $statuses[$campaign['status'] ?? 'draft'] ?? '📝 Черновик';
+                                                ?>
+                                            </span>
+                                            <span>📧 <?= htmlspecialchars($campaign['subject'] ?? 'Без темы') ?></span>
+                                            <span>📅 <?= date('d.m.Y H:i', strtotime($campaign['created_at'] ?? 'now')) ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="campaign-actions">
+                                        <a href="campaign.php?id=<?= $campaign['uuid'] ?>" class="btn btn-secondary btn-sm">
+                                            Открыть
+                                        </a>
+                                        
+                                        <!-- Archive Toggle -->
+                                        <form method="post" style="display: inline;">
+                                            <input type="hidden" name="campaign_uuid" value="<?= $campaign['uuid'] ?>">
+                                            <input type="hidden" name="new_status" value="archived">
+                                            <button type="submit" name="toggle_archive" class="btn btn-secondary btn-sm" title="В архив">
+                                                📦 Архивировать
+                                            </button>
+                                        </form>
+
+                                        <?php if (($campaign['status'] ?? 'draft') === 'draft'): ?>
+                                            <form method="post" style="display: inline;" onsubmit="return confirm('Удалить кампанию?');">
+                                                <input type="hidden" name="campaign_uuid" value="<?= $campaign['uuid'] ?>">
+                                                <button type="submit" name="delete_campaign" class="btn btn-danger btn-sm btn-icon" title="Удалить">
+                                                    🗑️
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="campaign-actions">
-                                    <a href="campaign.php?id=<?= $campaign['uuid'] ?>" class="btn btn-secondary btn-sm">
-                                        Открыть
-                                    </a>
-                                    <?php if (($campaign['status'] ?? 'draft') === 'draft'): ?>
-                                        <form method="post" style="display: inline;" onsubmit="return confirm('Удалить кампанию?');">
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+
+            <!-- Archived Campaigns -->
+            <div id="archived-pane" class="tab-pane">
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Архивные рассылки</h2>
+                    </div>
+                    
+                    <?php if (empty($archived_campaigns)): ?>
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📦</div>
+                            <h3>Архив пуст</h3>
+                            <p>Здесь будут храниться завершенные или ненужные рассылки</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="campaigns-grid">
+                            <?php foreach ($archived_campaigns as $campaign): ?>
+                                <div class="campaign-card" style="opacity: 0.7;">
+                                    <div class="campaign-info">
+                                        <h3 style="text-decoration: line-through; color: var(--text-muted);"><?= htmlspecialchars($campaign['name'] ?? 'Без названия') ?></h3>
+                                        <div class="campaign-meta">
+                                            <span class="campaign-status" style="background: var(--bg-tertiary); color: var(--text-muted);">📦 В архиве</span>
+                                            <span>📅 <?= date('d.m.Y H:i', strtotime($campaign['created_at'] ?? 'now')) ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="campaign-actions">
+                                        <form method="post" style="display: inline;">
+                                            <input type="hidden" name="campaign_uuid" value="<?= $campaign['uuid'] ?>">
+                                            <input type="hidden" name="new_status" value="draft">
+                                            <button type="submit" name="toggle_archive" class="btn btn-secondary btn-sm" title="Вернуть из архива">
+                                                🔄 Восстановить
+                                            </button>
+                                        </form>
+                                        <form method="post" style="display: inline;" onsubmit="return confirm('Удалить кампанию навсегда?');">
                                             <input type="hidden" name="campaign_uuid" value="<?= $campaign['uuid'] ?>">
                                             <button type="submit" name="delete_campaign" class="btn btn-danger btn-sm btn-icon">
                                                 🗑️
                                             </button>
                                         </form>
-                                    <?php endif; ?>
+                                    </div>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
-            </section>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
         </main>
 
         <footer style="text-align: center; padding: 24px 40px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 13px;">
@@ -835,6 +957,18 @@ $unsubscribed_count = count(getGlobalUnsubscribed());
         </div>
         
         <script>
+            function switchTab(paneId, tabEl) {
+                // Hide all panes
+                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                // Deactivate all tabs
+                document.querySelectorAll('.index-tab').forEach(tab => tab.classList.remove('active'));
+                
+                // Show selected pane
+                document.getElementById(paneId).classList.add('active');
+                // Activate selected tab
+                tabEl.classList.add('active');
+            }
+
             function openModal(id) {
                 document.getElementById(id).classList.add('active');
                 document.body.style.overflow = 'hidden';
